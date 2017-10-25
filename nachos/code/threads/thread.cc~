@@ -1,5 +1,5 @@
 
-// thread.cc 
+// thread.cc
 //	Routines to manage threads.  There are four main operations:
 //
 //	ThreadFork -- create a thread to run a procedure concurrently
@@ -8,11 +8,11 @@
 //	FinishThread -- called when the forked procedure finishes, to clean up
 //	YieldCPU -- relinquish control over the CPU to another ready thread
 //	PutThreadToSleep -- relinquish control over the CPU, but thread is now blocked.
-//		In other words, it will not run again, until explicitly 
+//		In other words, it will not run again, until explicitly
 //		put back on the ready queue.
 //
 // Copyright (c) 1992-1993 The Regents of the University of California.
-// All rights reserved.  See copyright.h for copyright notice and limitation 
+// All rights reserved.  See copyright.h for copyright notice and limitation
 // of liability and disclaimer of warranty provisions.
 
 #include "copyright.h"
@@ -22,7 +22,7 @@
 #include "system.h"
 
 #define STACK_FENCEPOST 0xdeadbeef	// this is put at the top of the
-					// execution stack, for detecting 
+					// execution stack, for detecting
 					// stack overflows
 
 
@@ -35,32 +35,68 @@
 /*
 class ThreadStatistics {
 	int beginTime,endTime,startRunningTime,stoppedRunningTime;
-	
+
 	int updateEndTime(int endTime);
-	
+
 	// Returns the wait time;
 	int startRunning(int time);
 	int stoppedRunning(int time);
 }*/
-
-
-void updateEndTime(){
-	stoppedRunningTime = totalTicks;
+ThreadStatistics::ThreadStatistics(int tid){
+		threadid=tid;
+//		startTime=stats->totalTicks;
 }
 
-void updateStartTime(){
-	startRunningTime=totalTicks;	
-}	
-	
-int startRunning(){
-	updateStartTime();
-	return totalTicks-endTime;
+
+
+void 
+ThreadStatistics::updateEndTime(){
+	stoppedRunningTime = stats->totalTicks;
 }
 
-int stoppedRunning(){
+void 
+ThreadStatistics::updateStartTime(){
+	//printf("stats->%d",stats->totalTicks);
+	startRunningTime=stats->totalTicks;
+}
+
+// gives time of waiting in ready queue
+int
+ThreadStatistics::startRunning(){
+	printf("[%d] Inside : startRunning\n",currentThread->getPid());
+ 	printf("[%d][Time: %d] Running after wait, waiting since %d\n",threadid ,stats->totalTicks, stoppedRunningTime);  	
+ 	updateStartTime();
+	return stats->totalTicks-stoppedRunningTime;
+}
+
+// gives time of last CPU burst
+int 
+ThreadStatistics::stoppedRunning(){
+	printf("[%d] Inside : stoppedRunning\n",currentThread->getPid());
 	updateEndTime();
-	return totalTicks-startTime;
+	if(stats->totalTicks > startRunningTime){
+		last_durationCPU=stats->totalTicks-startRunningTime;
+		printf("[%d][Time: %d] Runtime @ %d\n", threadid, stats->totalTicks,stats->totalTicks-startRunningTime );
+	 	return stats->totalTicks-startRunningTime;
+	}
+		return 0;
+ }
+
+
+// gives time of last CPU burst
+void 
+ThreadStatistics::updateStoppingTimeInitial(){
+	printf("[%d] Inside : updateStoppingTimeInitial\n",currentThread->getPid());
+	updateEndTime();
 }
+
+void
+ThreadStatistics::updateBeginTime(){
+	printf("[%d] Inside : updateBeginTime\n",currentThread->getPid());
+	beginTime=stats->totalTicks;
+	
+}
+
 
 //----------------------------------------------------------------------
 // NachOSThread::NachOSThread
@@ -79,17 +115,26 @@ NachOSThread::NachOSThread(char* threadName)
     stack = NULL;
     status = JUST_CREATED;
 #ifdef USER_PROGRAM
+
+		switch (scheduler->SchedulingAlgorithm) {
+			case 2:
+				priorityValue=10;
+				break;
+			default:
+				priorityValue=stats->totalTicks;
+		}
+		CPUUsage=0;
     space = NULL;
     stateRestored = true;
-   
+
 #endif
 
     threadArray[thread_index] = this;
     pid = thread_index;
     thread_index++;
-    
-     threadstatistics= new ThreadStatistics;
-    
+
+     threadStatistics= new ThreadStatistics(pid);
+
     ASSERT(thread_index < MAX_THREAD_COUNT);
     if (currentThread != NULL) {
        ppid = currentThread->GetPID();
@@ -104,6 +149,7 @@ NachOSThread::NachOSThread(char* threadName)
 
     instructionCount = 0;
 }
+
 
 //----------------------------------------------------------------------
 // NachOSThread::~NachOSThread
@@ -125,9 +171,14 @@ NachOSThread::~NachOSThread()
 	DeallocBoundedArray((char *) stack, StackSize * sizeof(int));
 }
 
+int
+NachOSThread::getPid(){
+	return pid;
+}
+
 //----------------------------------------------------------------------
 // NachOSThread::ThreadFork
-// 	Invoke (*func)(arg), allowing caller and callee to execute 
+// 	Invoke (*func)(arg), allowing caller and callee to execute
 //	concurrently.
 //
 //	NOTE: although our definition allows only a single integer argument
@@ -140,24 +191,25 @@ NachOSThread::~NachOSThread()
 //		2. Initialize the stack so that a call to SWITCH will
 //		cause it to run the procedure
 //		3. Put the thread on the ready queue
-// 	
+//
 //	"func" is the procedure to run concurrently.
 //	"arg" is a single argument to be passed to the procedure.
 //----------------------------------------------------------------------
 
-void 
+void
 NachOSThread::ThreadFork(VoidFunctionPtr func, int arg)
 {
+	printf("[%d] Inside : ThreadFork\n",currentThread->getPid());
     DEBUG('t', "Forking thread \"%s\" with pid %d with func = 0x%x, arg = %d\n",
 	  name, pid, (int) func, arg);
-    
+
     CreateThreadStack(func, arg);
 
     IntStatus oldLevel = interrupt->SetLevel(IntOff);
-    scheduler->MoveThreadToReadyQueue(this);	// MoveThreadToReadyQueue assumes that interrupts 
+    scheduler->MoveThreadToReadyQueue(this);	// MoveThreadToReadyQueue assumes that interrupts
 					// are disabled!
     (void) interrupt->SetLevel(oldLevel);
-}    
+}
 
 //----------------------------------------------------------------------
 // NachOSThread::CheckOverflow
@@ -187,28 +239,32 @@ NachOSThread::CheckOverflow()
 
 //----------------------------------------------------------------------
 // NachOSThread::FinishThread
-// 	Called by ThreadRoot when a thread is done executing the 
+// 	Called by ThreadRoot when a thread is done executing the
 //	forked procedure.
 //
-// 	NOTE: we don't immediately de-allocate the thread data structure 
-//	or the execution stack, because we're still running in the thread 
-//	and we're still on the stack!  Instead, we set "threadToBeDestroyed", 
+// 	NOTE: we don't immediately de-allocate the thread data structure
+//	or the execution stack, because we're still running in the thread
+//	and we're still on the stack!  Instead, we set "threadToBeDestroyed",
 //	so that ProcessScheduler::Schedule() will call the destructor, once we're
 //	running in the context of a different thread.
 //
-// 	NOTE: we disable interrupts, so that we don't get a time slice 
+// 	NOTE: we disable interrupts, so that we don't get a time slice
 //	between setting threadToBeDestroyed, and going to sleep.
 //----------------------------------------------------------------------
 
 //
 void
-NachOSThread::FinishThread ()
+NachOSThread::FinishThread()
 {
-    (void) interrupt->SetLevel(IntOff);		
+	//ASSERT(!((scheduler->listOfReadyThreads)->IsEmpty()));
+	//scheduler->Print();
+	printf("[%d] Inside : FinishThread\n",currentThread->getPid());
+    (void) interrupt->SetLevel(IntOff);
+    //stats->updateCompletionTimes(stats->totalTicks-startTime);
     ASSERT(this == currentThread);
-    
+
     DEBUG('t', "Finishing thread \"%s\" with pid %d\n", getName(), pid);
-    
+
     threadToBeDestroyed = currentThread;
     PutThreadToSleep();					// invokes SWITCH
     // not reached
@@ -222,6 +278,7 @@ NachOSThread::FinishThread ()
 void
 NachOSThread::SetChildExitCode (int childpid, int ecode)
 {
+	printf("[%d] Inside : SetChildExitCode\n",currentThread->getPid());
    unsigned i;
 
    // Find out which child
@@ -252,11 +309,23 @@ NachOSThread::SetChildExitCode (int childpid, int ecode)
 void
 NachOSThread::Exit (bool terminateSim, int exitcode)
 {
-    (void) interrupt->SetLevel(IntOff);
+	printf("[%d] Inside : Exit\n",currentThread->getPid());
+
+		stats->updateCompletionTimes(stats->totalTicks-threadStatistics->startRunningTime);
+		(void) interrupt->SetLevel(IntOff);
     ASSERT(this == currentThread);
 
     DEBUG('t', "Finishing thread \"%s\" with pid %d\n", getName(), pid);
 
+		int k=currentThread->threadStatistics->stoppedRunning();
+		printf("[%d] Exiting runtime: %d\n", currentThread->GetPID(),k);
+		stats->updateBurst(k);
+
+#ifndef USER_PROGRAM
+	//
+#else
+		changePriorityCarefully();
+#endif
     threadToBeDestroyed = currentThread;
 
     NachOSThread *nextThread;
@@ -296,7 +365,7 @@ NachOSThread::Exit (bool terminateSim, int exitcode)
 //	NOTE: we disable interrupts, so that looking at the thread
 //	on the front of the ready list, and switching to it, can be done
 //	atomically.  On return, we re-set the interrupt level to its
-//	original state, in case we are called with interrupts disabled. 
+//	original state, in case we are called with interrupts disabled.
 //
 // 	Similar to NachOSThread::PutThreadToSleep(), but a little different.
 //----------------------------------------------------------------------
@@ -304,17 +373,37 @@ NachOSThread::Exit (bool terminateSim, int exitcode)
 void
 NachOSThread::YieldCPU ()
 {
+	printf("[%d] Inside : YieldCPU\n",currentThread->getPid());
     NachOSThread *nextThread;
-    IntStatus oldLevel = interrupt->SetLevel(IntOff);
-    
+
     ASSERT(this == currentThread);
-    
+
     DEBUG('t', "Yielding thread \"%s\" with pid %d\n", getName(), pid);
-    
+
+
+		int r;
+		stats->updateBurst(r=(threadStatistics->stoppedRunning()));
+		IntStatus oldLevel = interrupt->SetLevel(IntOff);
+
+
+#ifndef USER_PROGRAM
+	//
+#else
+	changePriorityCarefully();
+#endif
+
+
+		scheduler->MoveThreadToReadyQueue(this);
     nextThread = scheduler->SelectNextReadyThread();
-    if (nextThread != NULL) {
-	scheduler->MoveThreadToReadyQueue(this);
-	scheduler->ScheduleThread(nextThread);
+
+		if(nextThread==currentThread || nextThread == NULL){
+			//ignore the wait time because its zero, but update the startRunningTime
+        printf("[%d] Switching out runtime: %d\n", currentThread->GetPID(), r); 		}
+    if (!(nextThread == currentThread || nextThread == NULL)) {
+			scheduler->ScheduleThread(nextThread);
+			printf("nextThread!=currentThread,Runtime for Current Thread %d from start time: %d and current time %d\n", r, currentThread->threadStatistics->startRunningTime, stats->totalTicks);
+			threadStatistics->startRunning();
+
     }
     (void) interrupt->SetLevel(oldLevel);
 }
@@ -334,32 +423,50 @@ NachOSThread::YieldCPU ()
 //
 //	NOTE: we assume interrupts are already disabled, because it
 //	is called from the synchronization routines which must
-//	disable interrupts for atomicity.   We need interrupts off 
+//	disable interrupts for atomicity.   We need interrupts off
 //	so that there can't be a time slice between pulling the first thread
 //	off the ready list, and switching to it.
 //----------------------------------------------------------------------
 void
 NachOSThread::PutThreadToSleep ()
 {
+		//scheduler->Print();
+	printf("[%d] Inside : PutThreadToSleep current Time%d\n",currentThread->getPid(),stats->totalTicks);
+	  ASSERT(!((scheduler->listOfReadyThreads)->IsEmpty()));
     NachOSThread *nextThread;
-    
+
     ASSERT(this == currentThread);
+	
+if( (!(currentThread->GetPID())==0) ){
+		//printf("inside-----------------------------------");
+			stats->updateBurst(threadStatistics->stoppedRunning());
+
+#ifndef USER_PROGRAM
+//
+#else
+			changePriorityCarefully();
+#endif
+}
+
+
     ASSERT(interrupt->getLevel() == IntOff);
-    
+
     DEBUG('t', "Sleeping thread \"%s\" with pid %d\n", getName(), pid);
 
     status = BLOCKED;
-    while ((nextThread = scheduler->SelectNextReadyThread()) == NULL)
-	interrupt->Idle();	// no one to run, wait for an interrupt
-        
-    scheduler->ScheduleThread(nextThread); // returns when we've been signalled
+    while ((nextThread = scheduler->SelectNextReadyThread()) == NULL){
+    	printf("idle\n");
+		interrupt->Idle();	// no one to run, wait for an interrupt
+	}
+	scheduler->ScheduleThread(nextThread); // returns when we've been signalled
+    ASSERT(FALSE);
 }
 
 //----------------------------------------------------------------------
 // ThreadFinish, InterruptEnable, ThreadPrint
 //	Dummy functions because C++ does not allow a pointer to a member
 //	function.  So in order to do this, we create a dummy C function
-//	(which we can pass a pointer to), that then simply calls the 
+//	(which we can pass a pointer to), that then simply calls the
 //	member function.
 //----------------------------------------------------------------------
 
@@ -405,7 +512,7 @@ NachOSThread::CreateThreadStack (VoidFunctionPtr func, int arg)
 #endif  // HOST_SPARC
     *stack = STACK_FENCEPOST;
 #endif  // HOST_SNAKE
-    
+
     machineState[PCState] = (int) _ThreadRoot;
     machineState[StartupPCState] = (int) InterruptEnable;
     machineState[InitialPCState] = (int) func;
@@ -420,8 +527,8 @@ NachOSThread::CreateThreadStack (VoidFunctionPtr func, int arg)
 // NachOSThread::SaveUserState
 //	Save the CPU state of a user program on a context switch.
 //
-//	Note that a user program thread has *two* sets of CPU registers -- 
-//	one for its state while executing user code, one for its state 
+//	Note that a user program thread has *two* sets of CPU registers --
+//	one for its state while executing user code, one for its state
 //	while executing kernel code.  This routine saves the former.
 //----------------------------------------------------------------------
 
@@ -435,12 +542,39 @@ NachOSThread::SaveUserState()
     }
 }
 
+void
+NachOSThread::changePriorityCarefully(){
+	printf("[%d] Inside : changePriorityCarefully\n",currentThread->getPid());
+  int sa=scheduler->SchedulingAlgorithm;
+  if(sa==2){
+    if(!threadStatistics->last_durationCPU) return;
+    currentThread->priorityValue+=threadStatistics->last_durationCPU;
+    currentThread->priorityValue/=2.0;
+  }
+  else if(sa==7 || sa==8 || sa==9 || sa==10){
+    if(!threadStatistics->last_durationCPU) return;
+    currentThread->CPUUsage+=threadStatistics->last_durationCPU;
+  //  THERE SHOUDL BE SOMETHING HERE----------------
+    /*List* new_listOfReadyThreads=new List;
+
+    int k=0;
+    while(k<thread_index){
+      NachOSThread* temp=listOfReadyThreads
+      new_listOfReadyThreads->SortedInsert((void*))
+      k++;
+    }
+  */
+  }else{
+    currentThread->priorityValue = stats->totalTicks;
+  }
+}
+
 //----------------------------------------------------------------------
 // NachOSThread::RestoreUserState
 //	Restore the CPU state of a user program on a context switch.
 //
-//	Note that a user program thread has *two* sets of CPU registers -- 
-//	one for its state while executing user code, one for its state 
+//	Note that a user program thread has *two* sets of CPU registers --
+//	one for its state while executing user code, one for its state
 //	while executing kernel code.  This routine restores the former.
 //----------------------------------------------------------------------
 
@@ -482,6 +616,7 @@ NachOSThread::CheckIfChild (int childpid)
 int
 NachOSThread::JoinWithChild (int whichchild)
 {
+	printf("Joion with child");
    // Has the child exited?
    if (!exitedChild[whichchild]) {
       // Put myself to sleep
@@ -517,6 +652,7 @@ NachOSThread::ResetReturnValue ()
 void
 NachOSThread::Schedule()
 {
+	printf("[%d] Inside : Schedule\n",currentThread->getPid());
     IntStatus oldLevel = interrupt->SetLevel(IntOff);
     scheduler->MoveThreadToReadyQueue(this);        // MoveThreadToReadyQueue assumes that interrupts
                                         // are disabled!
@@ -542,6 +678,7 @@ NachOSThread::Startup()
 void
 NachOSThread::SortedInsertInWaitQueue (unsigned when)
 {
+	printf("[%d] Inside : SortedInsertInWaitQueue\n",currentThread->getPid());
    TimeSortedWaitQueue *ptr, *prev, *temp;
 
    if (sleepQueueHead == NULL) {
@@ -576,9 +713,9 @@ NachOSThread::SortedInsertInWaitQueue (unsigned when)
    }
 
    IntStatus oldLevel = interrupt->SetLevel(IntOff);
-   //printf("[pid %d] Going to sleep at %d.\n", pid, stats->totalTicks);
+   printf("[pid %d] Going to sleep at %d.\n", pid, stats->totalTicks);
    PutThreadToSleep();
-   //printf("[pid %d] Returned from sleep at %d.\n", pid, stats->totalTicks);
+   printf("[pid %d] Returned from sleep at %d.\n", pid, stats->totalTicks);
    (void) interrupt->SetLevel(oldLevel);
 }
 

@@ -47,8 +47,8 @@
 // of liability and disclaimer of warranty provisions.
 
 
-#define q4
-#define a
+#define q4 100
+#define a 100
 
 
 #define MAIN
@@ -103,10 +103,15 @@ main(int argc, char **argv)
             printf (copyright);
 #ifdef USER_PROGRAM
         if(!strcmp(*argv,"-F")){
+        
+     //            ASSERT(FALSE);
           if(argc < 2){
             printf("file not specified\n");
             return 1;
           }
+
+          //printf("Processes to run:\n");
+
 ////Batchmode use it or not?????
           char files[100][300];
           int priorities[100];
@@ -129,8 +134,9 @@ int val, result = readInteger(firstLine.c_str(), val);
 */
 // scheduler->schedAlgo = static_cast<SchedulingAlgo>(val);
 
+          string line;
           getline(input,line);
-          char *cstr=line.c_str();
+          const char *cstr=line.c_str();
 
           // As described in the notes, 1 - corresponds to Nachos unpre-emptive algorithm
           // 2- etc..etc...
@@ -139,25 +145,24 @@ int val, result = readInteger(firstLine.c_str(), val);
           switch (SchedulingAlgorithm) {
             case 3:
             case 7:
-              TimerTicks=a/4.0;
+              TimerQuantum=a/4.0;
               break;
             case 4:
             case 8:
-              TimerTicks=a/2.0;
+              TimerQuantum=a/2.0;
               break;
             case 5:
             case 9:
-              TimerTicks=a*3.0/4;
+              TimerQuantum=a*3.0/4;
               break;
             case 6:
             case 10:
-              TimerTicks=q4;
+              TimerQuantum=q4;
               break;
             default:
-              TimerTicks=100;
+              TimerQuantum=100L;
           }
-
-          string line;
+          
           while(getline(input,line)){
             int pos = line.find(' ');
             if(pos < line.length()){
@@ -176,10 +181,11 @@ result = readInteger(line.substr(pos+1).c_str(),
                 line[pos]=0;
                 strcpy(files[cnt], line.c_str());
               }
-              else
+              else{
                 printf("bad string\n");
                 input.close();
                 return 1;
+               }
             }
             else{
               priorities[cnt]=100;
@@ -193,7 +199,11 @@ result = readInteger(line.substr(pos+1).c_str(),
             printf("%s: %d\n", files[i], priorities[i]);
           }
           DEBUG('t', "Starting running of processes\n");
-          BeginBatch(files, priorities, cnt);
+         //return;
+         //ASSERT(FALSE);
+         BeginBatch(files, priorities, cnt);
+         
+         //	break;
           argCount = 2;
         }
 

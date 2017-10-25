@@ -26,13 +26,13 @@ void
 LaunchUserProcess(char *filename)
 {
     OpenFile *executable = fileSystem->Open(filename);
-    ProcessAddressSpace *space;
+
 
     if (executable == NULL) {
 	printf("Unable to open file %s\n", filename);
 	return;
     }
-    space = new ProcessAddressSpace(executable);
+    ProcessAddressSpace* space = new ProcessAddressSpace(executable);
     currentThread->space = space;
 
     delete executable;			// close file
@@ -56,18 +56,20 @@ void BeginBatch(char files[][300],int *priorities,int batchSize){
 IntStatus old = interrupt->SetLevel(IntOff);
 
   for (i=0; i<batchSize; i++) {
+  	printf("$%s$\n",files[i]);
     executable = fileSystem->Open(files[i]);
     if (executable == NULL) {
       printf("Unable to open file %s\n", files[i]);
       continue;
     }
     thread = new NachOSThread(files[i]);
+
     space = new ProcessAddressSpace(executable);
     thread->space = space;
 
     int sa=scheduler->SchedulingAlgorithm;
-    if(sa==7 || sa==8 || sa==9 || sa=10)
-        thread->priority=priorities[i]+50;
+    if(sa==7 || sa==8 || sa==9 || sa==10)
+        thread->priorityValue=priorities[i]+50;
 
 /*
 if (scheduler->schedAlgo >= 7) {
@@ -76,18 +78,21 @@ if (scheduler->schedAlgo >= 7) {
 }
 */
     delete executable;
+//ASSERT(FALSE);
 
     space->InitUserModeCPURegisters();
-//    space->RestoreContextOnSwitch();
-//    thread->Schedule();
+  //  space->RestoreContextOnSwitch();
+   // thread->Schedule();
 
     thread->SaveUserState();
-
         // Allocate Kernel Stack
     thread->CreateThreadStack(ForkStartFunction, 0);
-
+//	ASSERT(FALSE);
+//	ASSERT(!((scheduler->listOfReadyThreads)->IsEmpty()));
+	thread->threadStatistics->updateBeginTime();
     thread->Schedule();
-
+ //   ASSERT(false);
+    	ASSERT(!((scheduler->listOfReadyThreads)->IsEmpty()));
   }
 
 interrupt->SetLevel(old);

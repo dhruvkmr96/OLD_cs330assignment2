@@ -31,7 +31,7 @@ ProcessScheduler::ProcessScheduler()
 {
   listOfReadyThreads = new List;
 
-#if def USER_PROGRAM
+#ifdef USER_PROGRAM
     SchedulingAlgorithm=0;
 #endif
 }
@@ -58,7 +58,8 @@ ProcessScheduler::~ProcessScheduler()
 void
 ProcessScheduler::MoveThreadToReadyQueue (NachOSThread *thread)
 {
-  thread->threadStatistics->stoppedRunning();
+	printf("[%d] Inside : MoveThreadToReadyQueue\n",currentThread->getPid());
+	thread->threadStatistics->updateStoppingTimeInitial();
 
     DEBUG('t', "Putting thread %s with PID %d on ready list.\n", thread->getName(), thread->GetPID());
 
@@ -66,8 +67,10 @@ ProcessScheduler::MoveThreadToReadyQueue (NachOSThread *thread)
 #ifndef USER_PROGRAM
     listOfReadyThreads->Append((void *)thread);
 #else
-    listOfReadyThreads->SortedInsertInWaitQueue((void*)thread,thread->priorityValue);
+    listOfReadyThreads->SortedInsert((void*)thread,thread->priorityValue);
 #endif
+	//printf("Moved thread to ready queue");
+	//Print();
 }
 
 //----------------------------------------------------------------------
@@ -81,6 +84,9 @@ ProcessScheduler::MoveThreadToReadyQueue (NachOSThread *thread)
 NachOSThread *
 ProcessScheduler::SelectNextReadyThread ()
 {
+  ASSERT(!(listOfReadyThreads->IsEmpty()));
+		//scheduler->Print();
+	printf("[%d] Inside : SelectNextReadyThread\n",currentThread->getPid());
 #ifndef USER_PROGRAM
   return (NachOSThread *)listOfReadyThreads->Remove();
 #else
@@ -92,6 +98,8 @@ ProcessScheduler::SelectNextReadyThread ()
     default:
       RearrangeThreadsOfReadyQueue();
   }
+  ASSERT(!(listOfReadyThreads->IsEmpty()));
+  //printf("---------------------------------------------------------------------------");
   return (NachOSThread *)listOfReadyThreads->Remove();
 #endif
 }
@@ -113,14 +121,17 @@ ProcessScheduler::SelectNextReadyThread ()
 void
 ProcessScheduler::ScheduleThread (NachOSThread *nextThread)
 {
+	printf("[%d] Inside : ScheduleThread\n",currentThread->getPid());
     //int CPUUsageTime=currentThread->threadStatistics->stoppedRunning();
     //stats->updateBurst(CPUUsageTime);
+    ASSERT(nextThread!=NULL);
   	nextThread->threadStatistics->startRunning();
 
     NachOSThread *oldThread = currentThread;
 
 #ifdef USER_PROGRAM			// ignore until running user programs
-    changePriorityCarefully(CPUUsageTime);
+//    changePriorityCarefully(CPUUsageTime);
+
     if (currentThread->space != NULL) {	// if this thread is a user program,
         currentThread->SaveUserState(); // save the user's CPU registers
 	       currentThread->space->SaveContextOnSwitch();
@@ -134,7 +145,7 @@ ProcessScheduler::ScheduleThread (NachOSThread *nextThread)
       case 10:
           break;
           //not needed, redundant
-          changePriorityCarefully(CPUUsageTime);
+//          changePriorityCarefully(CPUUsageTime);
       default:
         break;
     }
@@ -145,27 +156,47 @@ ProcessScheduler::ScheduleThread (NachOSThread *nextThread)
     oldThread->CheckOverflow();		    // check if the old thread
 					    // had an undetected stack overflow
 
+
     currentThread = nextThread;		    // switch to the next thread
     currentThread->setStatus(RUNNING);      // nextThread is now running
 
 
-#ifndef
+
+#ifndef USER_PROGRAM
+
   //hey
 #else
-    printf("[%d][Time: %d] Scheduling with priority: %d\n", currentThread->GetPID(), stats->totalTicks, currentThread->priorityValue + currentThread->CPUUsageTime/2);
+	//  printf("%d ", threadArray[i]->priorityValue + threadArray[i]->CPUUsage/2);
+printf("dkfd");
+
+	//printf("$%d$--------------",nextThread==NULL);
+
+    printf("[%d][Time: %d]- Scheduling with priority: %d\n", currentThread->GetPID(), stats->totalTicks, currentThread->priorityValue + currentThread->CPUUsage/2);
+
+	//printf("dkfd----------------");
+
 #endif
 
-    DEBUG('t', "Switching from thread \"%s\" with pid %d to thread \"%s\" with pid %d\n",
+
+	//printf("$%d$",nextThread==NULL);
+
+	DEBUG('t', "Switching from thread \"%s\" with pid %d to thread \"%s\" with pid %d\n",
 	  oldThread->getName(), oldThread->GetPID(), nextThread->getName(), nextThread->GetPID());
 
+    
     // This is a machine-dependent assembly language routine defined
     // in switch.s.  You may have to think
     // a bit to figure out what happens after this, both from the point
     // of view of the thread and from the perspective of the "outside world".
 
+
+
     _SWITCH(oldThread, nextThread);
 
+ASSERT(FALSE);
+
     DEBUG('t', "Now in thread \"%s\" with pid %d\n", currentThread->getName(), currentThread->GetPID());
+
 
     // If the old thread gave up the processor because it was finishing,
     // we need to delete its carcass.  Note we cannot delete the thread
@@ -182,6 +213,7 @@ ProcessScheduler::ScheduleThread (NachOSThread *nextThread)
 	currentThread->space->RestoreContextOnSwitch();
     }
 #endif
+	ASSERT(FALSE);
 }
 
 //----------------------------------------------------------------------
@@ -193,6 +225,7 @@ ProcessScheduler::ScheduleThread (NachOSThread *nextThread)
 void
 ProcessScheduler::Tail ()
 {
+	printf("[%d] Inside : Tail  current time %d\n",currentThread->getPid(),stats->totalTicks);
     // If the old thread gave up the processor because it was finishing,
     // we need to delete its carcass.  Note we cannot delete the thread
     // before now (for example, in NachOSThread::FinishThread()), because up to this
@@ -212,6 +245,8 @@ ProcessScheduler::Tail ()
 
 void
 ProcessScheduler::RearrangeThreadsOfReadyQueue(){
+	//scheduler->Print();
+	printf("[%d] Inside : RearrangeThreadsOfReadyQueue\n",currentThread->getPid());
 
   int k=0;
   while (k<thread_index) {
@@ -219,22 +254,27 @@ ProcessScheduler::RearrangeThreadsOfReadyQueue(){
       k++;
       continue;
     }
-    threadArray[i]->CPUUsage/=2;
+    (threadArray[k]->CPUUsage)/=2;
+    k++;
   }
 
   NachOSThread* t;
-  for(List*l=new List;!listOfReadyThreads->IsEmpty();l->SortedInsert(t,t->priorityValue+t->CPUUsage/2))
-    l=(NachOSThread* )listOfReadyThreads->Remove();
+  List*l;
+        ASSERT(!(listOfReadyThreads->IsEmpty()));
+  for(l=new List;!(listOfReadyThreads->IsEmpty());l->SortedInsert(t,t->priorityValue+t->CPUUsage/2))
+    t=(NachOSThread* )(listOfReadyThreads->Remove());
   listOfReadyThreads=l;
 
-REMOVE THIS AFTER debugging
+//REMOVE THIS AFTER debugging
          printf("Priorities:\n");
         for(unsigned int i = 1; i < thread_index; i++) {
             if (!exitThreadArray[i]) {
-                printf("%d ", threadArray[i]->priority + threadArray[i]->cpuCount/2);
+                printf("%d ", threadArray[i]->priorityValue + threadArray[i]->CPUUsage/2);
             }
         }
         printf("\n");
+        ASSERT(!(listOfReadyThreads->IsEmpty()));
+  	//	printf("\nIsEmpty() Ready list = %d\n",listOfReadyThreads->IsEmpty());
 
 
 }
@@ -248,5 +288,6 @@ void
 ProcessScheduler::Print()
 {
     printf("Ready list contents:\n");
+    
     listOfReadyThreads->Mapcar((VoidFunctionPtr) ThreadPrint);
 }

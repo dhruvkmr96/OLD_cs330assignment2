@@ -1,4 +1,4 @@
-
+	
 // stats.h
 //	Routines for managing statistics about Nachos performance.
 //
@@ -13,6 +13,8 @@
 #include "stats.h"
 using namespace std;
 
+long long TimerQuantum=100L;
+
 //----------------------------------------------------------------------
 // Statistics::Statistics
 // 	Initialize performance metrics to zero, at system startup.
@@ -20,6 +22,7 @@ using namespace std;
 
 Statistics::Statistics()
 {
+
 
 	// maybe min= infinity and max=0 but i think its taken care of
 
@@ -46,7 +49,7 @@ Statistics::Print()
 
 	totalCPUBusyTime = 	systemTicks+userTicks;
 	totalExecutionTime = totalTicks;
-	CPUUtilization = totalCPUBusyTime*100.0)/totalExecutionTime;
+	CPUUtilization = (totalCPUBusyTime*100.0)/totalExecutionTime;
 
 	bool flag=false;
 	double totalCompletionTime=0.0;
@@ -64,9 +67,9 @@ Statistics::Print()
 	averageWaitingTime=totalCompletionTime/numcount;
 
 	for(list<int>::iterator i=allCompletionTimes.begin();i!=allCompletionTimes.end();i++)
-		varianceThreadCompletionTime=varianceThreadCompletionTime+ (averageWaitingTime-*i)*(averageWaitingTime-*i);}
+		varianceThreadCompletionTime=varianceThreadCompletionTime+ (averageWaitingTime-*i)*(averageWaitingTime-*i);
 
-	varianceThreadCompletionTime/=n;
+	varianceThreadCompletionTime/=numcount;
 
     printf("totalCPUBusyTime %d\n", totalCPUBusyTime); //systemTicks+userTicks
     printf("totalExecutionTime %d\n", totalExecutionTime);
@@ -77,7 +80,7 @@ Statistics::Print()
     printf("numNonZeroBursts %d\n", numNonZeroBursts);
 
 
-    printf("minThreadCompletionTime %d\n", minThreadCompletionTime);
+    printf("--minThreadCompletionTime %d\n", minThreadCompletionTime);
     printf("maxThreadCompletionTime %d\n", maxThreadCompletionTime);
     printf("averageWaitingTime %f\n", averageWaitingTime);
     printf("varianceThreadCompletionTime %f\n\n\n", varianceThreadCompletionTime);
@@ -117,11 +120,13 @@ Statistics::Print()
 
 
 void Statistics::updateBurst(int timek){
-	ASSERT(timek!=0 && timek<=200);
-	HERE IT SHOULD BE QUANTUM LENGTH INSTEAD OF 200
+	if(timek==0) return;
+
+	bool eq=timek!=0 && timek<=2*TimerQuantum;
+	ASSERT(eq);
+	//HERE IT SHOULD BE QUANTUM LENGTH INSTEAD OF 200
 
 	float time=timek;
-	if(time==0) return;
 	if(minCPUBurstLength>time) minCPUBurstLength=time;
 	if(maxCPUBurstLength<time) maxCPUBurstLength=time;
 	averageCPUBurstLength=(averageCPUBurstLength*(numNonZeroBursts)+ time)/(numNonZeroBursts+1);

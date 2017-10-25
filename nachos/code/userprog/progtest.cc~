@@ -26,13 +26,13 @@ void
 LaunchUserProcess(char *filename)
 {
     OpenFile *executable = fileSystem->Open(filename);
-    ProcessAddressSpace *space;
+
 
     if (executable == NULL) {
 	printf("Unable to open file %s\n", filename);
 	return;
     }
-    space = new ProcessAddressSpace(executable);
+    ProcessAddressSpace* space = new ProcessAddressSpace(executable);
     currentThread->space = space;
 
     delete executable;			// close file
@@ -47,24 +47,30 @@ LaunchUserProcess(char *filename)
 }
 
 
-void StartBatchOfProcess(char files[][300],int *priorities,int batchSize){
+void BeginBatch(char files[][300],int *priorities,int batchSize){
   NachOSThread *thread, *mainThread;
   ProcessAddressSpace *space;
   OpenFile *executable;
   int i;
-/*
-IntStatus oldLevel = interrupt->SetLevel(IntOff);
-*/
-  mainThread=currentThread;
+
+IntStatus old = interrupt->SetLevel(IntOff);
+
   for (i=0; i<batchSize; i++) {
+  	printf("$%s$\n",files[i]);
     executable = fileSystem->Open(files[i]);
     if (executable == NULL) {
       printf("Unable to open file %s\n", files[i]);
       continue;
     }
     thread = new NachOSThread(files[i]);
+
     space = new ProcessAddressSpace(executable);
     thread->space = space;
+
+    int sa=scheduler->SchedulingAlgorithm;
+    if(sa==7 || sa==8 || sa==9 || sa==10)
+        thread->priorityValue=priorities[i]+50;
+
 /*
 if (scheduler->schedAlgo >= 7) {
             // Only needed in case of UNIX scheduling
@@ -72,22 +78,25 @@ if (scheduler->schedAlgo >= 7) {
 }
 */
     delete executable;
-    currentThread=thread;
+//ASSERT(FALSE);
+
     space->InitUserModeCPURegisters();
-    space->RestoreContextOnSwitch();
-    thread->Schedule();
+  //  space->RestoreContextOnSwitch();
+   // thread->Schedule();
 
     thread->SaveUserState();
-
         // Allocate Kernel Stack
     thread->CreateThreadStack(ForkStartFunction, 0);
-
-thread->Schedule();
-
+//	ASSERT(FALSE);
+//	ASSERT(!((scheduler->listOfReadyThreads)->IsEmpty()));
+	thread->updateBeginTime();
+    thread->Schedule();
+ //   ASSERT(false);
+    	ASSERT(!((scheduler->listOfReadyThreads)->IsEmpty()));
   }
-/*
-interrupt->SetLevel(oldLevel);  // turning on the interrupt
 
+interrupt->SetLevel(old);
+/*
     exitThreadArray[currentThread->GetPID()] = true;
     // FinishThread doesn't log completion time, NachOSThread::Exit does
     currentThread->FinishThread();
@@ -95,12 +104,9 @@ interrupt->SetLevel(oldLevel);  // turning on the interrupt
     // Let scheduler run the other threads
 
 */
-  currentThread=mainThread;
-  for (i = 0; i < thread_index; i++) {
-    if (!exitThreadArray[i])
-      break;
-  }
-  currentThread->Exit(i == thread_index, 0);
+int pidofcurrentThread=currentThread->GetPID();
+exitThreadArray[pidofcurrentThread]=true;
+currentThread->FinishThread();
   machine->Run();
 }
 

@@ -79,9 +79,10 @@ TimerInterruptHandler(int dummy)
         //printf("[%d] Timer interrupt.\n", stats->totalTicks);
 #ifndef USER_PROGRAM
         interrupt->YieldOnReturn();
-#else   if(scheduler->SchedulingAlgorithm!=1 && scheduler->SchedulingAlgorithm!=2 && scheduler->SchedulingAlgorithm!=0){
-            if(stats->totalTicks - currentThread->threadStatistics->startRunningTime >= TimerTicks)// or TimerTicks
-              interrupt->YieldOnReturn;
+#else   
+	if(scheduler->SchedulingAlgorithm!=1 && scheduler->SchedulingAlgorithm!=2 && scheduler->SchedulingAlgorithm!=0){
+            if(stats->totalTicks - currentThread->threadStatistics->startRunningTime >= TimerQuantum)// or TimerTicks
+              interrupt->YieldOnReturn();
         }
 #endif
     }
@@ -143,7 +144,7 @@ Initialize(int argc, char **argv)
 	if (!strcmp(*argv, "-s"))
 	    debugUserProg = TRUE;
 
-      
+
 #endif
 #ifdef FILESYS_NEEDED
 	if (!strcmp(*argv, "-f"))
