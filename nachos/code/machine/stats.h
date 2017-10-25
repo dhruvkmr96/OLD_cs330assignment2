@@ -20,19 +20,24 @@
 //
 // The fields in this class are public to make it easier to update.
 
+extern long long int TimerQuantum;
+
 class Statistics {
   public:
+
+//  long long int TimerQuantum;
+
 	int totalCPUBusyTime, totalExecutionTime, maxCPUBurstLength, minCPUBurstLength,
 	 	numNonZeroBursts, maxThreadCompletionTime, minThreadCompletionTime;
 
-	float averageCPUBurstLength averageThreadCompletionTime,
+	float averageCPUBurstLength,  averageThreadCompletionTime,
 		varianceThreadCompletionTime, averageWaitingTime, CPUUtilization;
 
-	list<int>allCompletionTimes;
+	std::list<int>allCompletionTimes;
 
-  void Statistics::updateCompletionTimes(int duration);
+  void updateCompletionTimes(int duration);
 
-	void Statistics::updateBurst(int timek);
+	void updateBurst(int timek);
 
     int totalTicks;      	// Total time running Nachos
     int idleTicks;       	// Time spent idle (no threads to run)
@@ -68,6 +73,6 @@ class Statistics {
 #define SeekTime 	500    	// time disk takes to seek past one track
 #define ConsoleTime 	100	// time to read or write one character
 #define NetworkTime 	100   	// time to send or receive one packet
-#define TimerTicks 	100    	// (average) time between timer interrupts
+//#define TimerTicks 	100    	// (average) time between timer interrupts
 
 #endif // STATS_H

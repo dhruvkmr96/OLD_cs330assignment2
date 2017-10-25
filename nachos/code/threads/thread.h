@@ -68,7 +68,9 @@ extern void ThreadPrint(int arg);
 
 
 class ThreadStatistics {
-	int startTime,endTime,startRunningTime,stoppedRunningTime;
+public:
+	void updateStoppingTimeInitial();
+	int startRunningTime,stoppedRunningTime,last_durationCPU;
 	int threadid;
 //REMOVE INt, ONLY FOR debugging
 	ThreadStatistics(int);
@@ -77,7 +79,7 @@ class ThreadStatistics {
 	// Returns the wait time;
 	int startRunning();
 	int stoppedRunning();
-}
+};
 
 
 // The following class defines a "thread control block" -- which
@@ -93,17 +95,21 @@ class ThreadStatistics {
 
 class NachOSThread {
   private:
+  	int beginTime;
     // NOTE: DO NOT CHANGE the order of these first two members.
     // THEY MUST be in this position for SWITCH to work.
     int* stackTop;			 // the current stack pointer
     int machineState[MachineStateSize];  // all registers except for stackTop
 
   public:
+		
+	void updateBeginTime();
+	
 
 		void changePriorityCarefully();
 		int priorityValue,CPUUsage;
 
-  	ThreadStatistics *threadstatistics;
+  	ThreadStatistics *threadStatistics;
 
     NachOSThread(char* debugName);		// initialize a Thread
     ~NachOSThread(); 				// deallocate a Thread

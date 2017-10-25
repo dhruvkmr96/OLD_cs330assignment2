@@ -44,29 +44,49 @@ class ThreadStatistics {
 }*/
 ThreadStatistics::ThreadStatistics(int tid){
 		threadid=tid;
-		startTime=totalTicks;
+//		startTime=stats->totalTicks;
 }
 
-void updateEndTime(){
-	stoppedRunningTime = totalTicks;
+
+
+void 
+ThreadStatistics::updateEndTime(){
+	stoppedRunningTime = stats->totalTicks;
 }
 
-void updateStartTime(){
-	startRunningTime=totalTicks;
+void 
+ThreadStatistics::updateStartTime(){
+	//printf("stats->%d",stats->totalTicks);
+	startRunningTime=stats->totalTicks;
 }
 
 // gives time of waiting in ready queue
-int startRunning(){
- 	printf("[%d][Time: %d] Running after wait, waiting since %d\n", pid, totalTicks, stoppedRunningTime);  	updateStartTime();
-	return totalTicks-stoppedRunningTime;
+int
+ThreadStatistics::startRunning(){
+ 	printf("[%d][Time: %d] Running after wait, waiting since %d\n",threadid ,stats->totalTicks, stoppedRunningTime);  	
+ 	updateStartTime();
+	return stats->totalTicks-stoppedRunningTime;
 }
 
 // gives time of last CPU burst
-int stoppedRunning(){
+int 
+ThreadStatistics::stoppedRunning(){
 	updateEndTime();
-  printf("[%d][Time: %d] Runtime @ %d\n", threadid, totalTicks,totalTicks-startRunningTime );
-	 	return totalTicks-startRunningTime;
+	if(stats->totalTicks > startRunningTime){
+		last_durationCPU=stats->totalTicks-startRunningTime;
+		printf("[%d][Time: %d] Runtime @ %d\n", threadid, stats->totalTicks,stats->totalTicks-startRunningTime );
+	 	return stats->totalTicks-startRunningTime;
+	}
+		return 0;
+ }
+
+
+// gives time of last CPU burst
+void 
+ThreadStatistics::updateStoppingTimeInitial(){
+	updateEndTime();
 }
+
 
 //----------------------------------------------------------------------
 // NachOSThread::NachOSThread
@@ -103,7 +123,7 @@ NachOSThread::NachOSThread(char* threadName)
     pid = thread_index;
     thread_index++;
 
-     threadstatistics= new ThreadStatistics(pid);
+     threadStatistics= new ThreadStatistics(pid);
 
     ASSERT(thread_index < MAX_THREAD_COUNT);
     if (currentThread != NULL) {
@@ -118,6 +138,12 @@ NachOSThread::NachOSThread(char* threadName)
     for (i=0; i<MAX_CHILD_COUNT; i++) exitedChild[i] = false;
 
     instructionCount = 0;
+}
+
+void
+NachOSThread::updateBeginTime(){
+	beginTime=stats->totalTicks;
+	
 }
 
 //----------------------------------------------------------------------
@@ -217,8 +243,11 @@ NachOSThread::CheckOverflow()
 
 //
 void
-NachOSThread::FinishThread ()
+NachOSThread::FinishThread()
 {
+	//ASSERT(!((scheduler->listOfReadyThreads)->IsEmpty()));
+	scheduler->Print();
+	printf("Inside : FinishThread\n");
     (void) interrupt->SetLevel(IntOff);
     //stats->updateCompletionTimes(stats->totalTicks-startTime);
     ASSERT(this == currentThread);
@@ -238,6 +267,7 @@ NachOSThread::FinishThread ()
 void
 NachOSThread::SetChildExitCode (int childpid, int ecode)
 {
+	printf("Inside : SetChildExitCode\n");
    unsigned i;
 
    // Find out which child
@@ -268,9 +298,9 @@ NachOSThread::SetChildExitCode (int childpid, int ecode)
 void
 NachOSThread::Exit (bool terminateSim, int exitcode)
 {
+	printf("Inside : Exit\n");
 
-
-		stats->updateCompletionTimes(stats->totalTicks-stats->startTime);
+		stats->updateCompletionTimes(stats->totalTicks-threadStatistics->startRunningTime);
 		(void) interrupt->SetLevel(IntOff);
     ASSERT(this == currentThread);
 
@@ -332,6 +362,7 @@ NachOSThread::Exit (bool terminateSim, int exitcode)
 void
 NachOSThread::YieldCPU ()
 {
+	printf("Inside : YieldCPU\n");
     NachOSThread *nextThread;
 
     ASSERT(this == currentThread);
@@ -339,7 +370,8 @@ NachOSThread::YieldCPU ()
     DEBUG('t', "Yielding thread \"%s\" with pid %d\n", getName(), pid);
 
 
-		stats->updateBurst(threadStatistics->stoppedRunning());
+		int r;
+		stats->updateBurst(r=(threadStatistics->stoppedRunning()));
 		IntStatus oldLevel = interrupt->SetLevel(IntOff);
 
 
@@ -355,10 +387,10 @@ NachOSThread::YieldCPU ()
 
 		if(nextThread==currentThread || nextThread == NULL){
 			//ignore the wait time because its zero, but update the startRunningTime
-        printf("[%d] Switching out runtime: %d\n", currentThread->GetPID(), runTime); 		}
+        printf("[%d] Switching out runtime: %d\n", currentThread->GetPID(), r); 		}
     if (!(nextThread == currentThread || nextThread == NULL)) {
 			scheduler->ScheduleThread(nextThread);
-			printf("nextThread!=currentThread,Runtime for Current Thread %d from start time: %d and current time %d\n", runTime, currentThread->tstats->startTicks, curTicks);
+			printf("nextThread!=currentThread,Runtime for Current Thread %d from start time: %d and current time %d\n", r, currentThread->threadStatistics->startRunningTime, stats->totalTicks);
 			threadStatistics->startRunning();
 
     }
@@ -387,11 +419,15 @@ NachOSThread::YieldCPU ()
 void
 NachOSThread::PutThreadToSleep ()
 {
+		scheduler->Print();
+	printf("Inside : PutThreadToSleep\n");
+	  ASSERT(!((scheduler->listOfReadyThreads)->IsEmpty()));
     NachOSThread *nextThread;
 
     ASSERT(this == currentThread);
 
-if( (!currentThread->GetPID())==0 ){
+if( (!(currentThread->GetPID())==0) ){
+		printf("inside-----------------------------------");
 			stats->updateBurst(threadStatistics->stoppedRunning());
 
 #ifndef USER_PROGRAM
@@ -407,10 +443,12 @@ if( (!currentThread->GetPID())==0 ){
     DEBUG('t', "Sleeping thread \"%s\" with pid %d\n", getName(), pid);
 
     status = BLOCKED;
-    while ((nextThread = scheduler->SelectNextReadyThread()) == NULL)
+    while ((nextThread = scheduler->SelectNextReadyThread()) == NULL){
+    	printf("idle\n");
 		interrupt->Idle();	// no one to run, wait for an interrupt
-
-    scheduler->ScheduleThread(nextThread); // returns when we've been signalled
+	}
+	scheduler->ScheduleThread(nextThread); // returns when we've been signalled
+    ASSERT(FALSE);
 }
 
 //----------------------------------------------------------------------
@@ -495,15 +533,16 @@ NachOSThread::SaveUserState()
 
 void
 NachOSThread::changePriorityCarefully(){
+	printf("ChangePriorityCarefully");
   int sa=scheduler->SchedulingAlgorithm;
   if(sa==2){
-    if(!durationCPU) return;
-    currentThread->priorityValue+=durationCPU;
+    if(!threadStatistics->last_durationCPU) return;
+    currentThread->priorityValue+=threadStatistics->last_durationCPU;
     currentThread->priorityValue/=2.0;
   }
   else if(sa==7 || sa==8 || sa==9 || sa==10){
-    if(!durationCPU) return;
-    currentThread->CPUUsage+=durationCPU;
+    if(!threadStatistics->last_durationCPU) return;
+    currentThread->CPUUsage+=threadStatistics->last_durationCPU;
   //  THERE SHOUDL BE SOMETHING HERE----------------
     /*List* new_listOfReadyThreads=new List;
 
@@ -566,6 +605,7 @@ NachOSThread::CheckIfChild (int childpid)
 int
 NachOSThread::JoinWithChild (int whichchild)
 {
+	printf("Joion with child");
    // Has the child exited?
    if (!exitedChild[whichchild]) {
       // Put myself to sleep
@@ -601,6 +641,7 @@ NachOSThread::ResetReturnValue ()
 void
 NachOSThread::Schedule()
 {
+	printf("Inside : Schedule\n");
     IntStatus oldLevel = interrupt->SetLevel(IntOff);
     scheduler->MoveThreadToReadyQueue(this);        // MoveThreadToReadyQueue assumes that interrupts
                                         // are disabled!
@@ -626,6 +667,7 @@ NachOSThread::Startup()
 void
 NachOSThread::SortedInsertInWaitQueue (unsigned when)
 {
+	printf("Inside : SortedInsertInWaitQueue\n");
    TimeSortedWaitQueue *ptr, *prev, *temp;
 
    if (sleepQueueHead == NULL) {

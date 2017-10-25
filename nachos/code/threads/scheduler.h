@@ -33,7 +33,7 @@ class ProcessScheduler {
 
     void Tail();                        // Used by fork()
 
-  private:
+  public:
     List *listOfReadyThreads;  		// queue of threads that are ready to run,
 				// but not running
 };
