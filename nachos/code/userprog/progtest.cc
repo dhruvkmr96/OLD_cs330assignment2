@@ -89,7 +89,11 @@ if (scheduler->schedAlgo >= 7) {
     thread->CreateThreadStack(ForkStartFunction, 0);
 //	ASSERT(FALSE);
 //	ASSERT(!((scheduler->listOfReadyThreads)->IsEmpty()));
+<<<<<<< HEAD
 	thread->threadStatistics->updateBeginTime();
+=======
+	thread->updateBeginTime();
+>>>>>>> bc7c20ed778f80fdbdc52b8d94392110253cb1a3
     thread->Schedule();
  //   ASSERT(false);
     	ASSERT(!((scheduler->listOfReadyThreads)->IsEmpty()));

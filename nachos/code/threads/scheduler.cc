@@ -58,7 +58,11 @@ ProcessScheduler::~ProcessScheduler()
 void
 ProcessScheduler::MoveThreadToReadyQueue (NachOSThread *thread)
 {
+<<<<<<< HEAD
 	printf("[%d] Inside : MoveThreadToReadyQueue\n",currentThread->getPid());
+=======
+	printf("Inside : MoveThreadToReadyQueue\n");
+>>>>>>> bc7c20ed778f80fdbdc52b8d94392110253cb1a3
 	thread->threadStatistics->updateStoppingTimeInitial();
 
     DEBUG('t', "Putting thread %s with PID %d on ready list.\n", thread->getName(), thread->GetPID());
@@ -69,8 +73,13 @@ ProcessScheduler::MoveThreadToReadyQueue (NachOSThread *thread)
 #else
     listOfReadyThreads->SortedInsert((void*)thread,thread->priorityValue);
 #endif
+<<<<<<< HEAD
 	//printf("Moved thread to ready queue");
 	//Print();
+=======
+	printf("Moved thread to ready queue");
+	Print();
+>>>>>>> bc7c20ed778f80fdbdc52b8d94392110253cb1a3
 }
 
 //----------------------------------------------------------------------
@@ -85,8 +94,13 @@ NachOSThread *
 ProcessScheduler::SelectNextReadyThread ()
 {
   ASSERT(!(listOfReadyThreads->IsEmpty()));
+<<<<<<< HEAD
 		//scheduler->Print();
 	printf("[%d] Inside : SelectNextReadyThread\n",currentThread->getPid());
+=======
+		scheduler->Print();
+	printf("Inside : SelectNextReadyThread\n");
+>>>>>>> bc7c20ed778f80fdbdc52b8d94392110253cb1a3
 #ifndef USER_PROGRAM
   return (NachOSThread *)listOfReadyThreads->Remove();
 #else
@@ -99,7 +113,11 @@ ProcessScheduler::SelectNextReadyThread ()
       RearrangeThreadsOfReadyQueue();
   }
   ASSERT(!(listOfReadyThreads->IsEmpty()));
+<<<<<<< HEAD
   //printf("---------------------------------------------------------------------------");
+=======
+  printf("---------------------------------------------------------------------------");
+>>>>>>> bc7c20ed778f80fdbdc52b8d94392110253cb1a3
   return (NachOSThread *)listOfReadyThreads->Remove();
 #endif
 }
@@ -121,7 +139,11 @@ ProcessScheduler::SelectNextReadyThread ()
 void
 ProcessScheduler::ScheduleThread (NachOSThread *nextThread)
 {
+<<<<<<< HEAD
 	printf("[%d] Inside : ScheduleThread\n",currentThread->getPid());
+=======
+	printf("Inside : ScheduleThread\n");
+>>>>>>> bc7c20ed778f80fdbdc52b8d94392110253cb1a3
     //int CPUUsageTime=currentThread->threadStatistics->stoppedRunning();
     //stats->updateBurst(CPUUsageTime);
     ASSERT(nextThread!=NULL);
@@ -166,6 +188,7 @@ ProcessScheduler::ScheduleThread (NachOSThread *nextThread)
 
   //hey
 #else
+<<<<<<< HEAD
 	//  printf("%d ", threadArray[i]->priorityValue + threadArray[i]->CPUUsage/2);
 printf("dkfd");
 
@@ -174,11 +197,24 @@ printf("dkfd");
     printf("[%d][Time: %d]- Scheduling with priority: %d\n", currentThread->GetPID(), stats->totalTicks, currentThread->priorityValue + currentThread->CPUUsage/2);
 
 	//printf("dkfd----------------");
+=======
+	printf("dkfd");
+
+	printf("$%d$--------------",nextThread==NULL);
+
+    printf("[%d][Time: %d]- Scheduling with priority: %d\n", currentThread->GetPID(), stats->totalTicks, currentThread->priorityValue + currentThread->CPUUsage/2);
+
+	printf("dkfd----------------");
+>>>>>>> bc7c20ed778f80fdbdc52b8d94392110253cb1a3
 
 #endif
 
 
+<<<<<<< HEAD
 	//printf("$%d$",nextThread==NULL);
+=======
+	printf("$%d$",nextThread==NULL);
+>>>>>>> bc7c20ed778f80fdbdc52b8d94392110253cb1a3
 
 	DEBUG('t', "Switching from thread \"%s\" with pid %d to thread \"%s\" with pid %d\n",
 	  oldThread->getName(), oldThread->GetPID(), nextThread->getName(), nextThread->GetPID());
@@ -225,7 +261,11 @@ ASSERT(FALSE);
 void
 ProcessScheduler::Tail ()
 {
+<<<<<<< HEAD
 	printf("[%d] Inside : Tail  current time %d\n",currentThread->getPid(),stats->totalTicks);
+=======
+	printf("Inside : Tail\n");
+>>>>>>> bc7c20ed778f80fdbdc52b8d94392110253cb1a3
     // If the old thread gave up the processor because it was finishing,
     // we need to delete its carcass.  Note we cannot delete the thread
     // before now (for example, in NachOSThread::FinishThread()), because up to this
@@ -245,8 +285,13 @@ ProcessScheduler::Tail ()
 
 void
 ProcessScheduler::RearrangeThreadsOfReadyQueue(){
+<<<<<<< HEAD
 	//scheduler->Print();
 	printf("[%d] Inside : RearrangeThreadsOfReadyQueue\n",currentThread->getPid());
+=======
+	scheduler->Print();
+	printf("Inside : RearrangeThreadsOfReadyQueue\n");
+>>>>>>> bc7c20ed778f80fdbdc52b8d94392110253cb1a3
 
   int k=0;
   while (k<thread_index) {
@@ -274,7 +319,11 @@ ProcessScheduler::RearrangeThreadsOfReadyQueue(){
         }
         printf("\n");
         ASSERT(!(listOfReadyThreads->IsEmpty()));
+<<<<<<< HEAD
   	//	printf("\nIsEmpty() Ready list = %d\n",listOfReadyThreads->IsEmpty());
+=======
+  		printf("\nIsEmpty() Ready list = %d\n",listOfReadyThreads->IsEmpty());
+>>>>>>> bc7c20ed778f80fdbdc52b8d94392110253cb1a3
 
 
 }

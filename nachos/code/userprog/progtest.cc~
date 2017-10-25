@@ -91,7 +91,11 @@ if (scheduler->schedAlgo >= 7) {
 //	ASSERT(!((scheduler->listOfReadyThreads)->IsEmpty()));
 	thread->updateBeginTime();
     thread->Schedule();
+<<<<<<< HEAD
  //   ASSERT(false);
+=======
+    ASSERT(false);
+>>>>>>> bc7c20ed778f80fdbdc52b8d94392110253cb1a3
     	ASSERT(!((scheduler->listOfReadyThreads)->IsEmpty()));
   }
 

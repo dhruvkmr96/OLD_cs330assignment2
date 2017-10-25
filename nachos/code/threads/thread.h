@@ -68,9 +68,13 @@ extern void ThreadPrint(int arg);
 
 
 class ThreadStatistics {
+<<<<<<< HEAD
 
 public:
 	void updateBeginTime();
+=======
+public:
+>>>>>>> bc7c20ed778f80fdbdc52b8d94392110253cb1a3
 	void updateStoppingTimeInitial();
 	int startRunningTime,stoppedRunningTime,last_durationCPU;
 	int threadid;
@@ -98,7 +102,11 @@ public:
 
 class NachOSThread {
   private:
+<<<<<<< HEAD
 
+=======
+  	int beginTime;
+>>>>>>> bc7c20ed778f80fdbdc52b8d94392110253cb1a3
     // NOTE: DO NOT CHANGE the order of these first two members.
     // THEY MUST be in this position for SWITCH to work.
     int* stackTop;			 // the current stack pointer
@@ -106,8 +114,13 @@ class NachOSThread {
 
   public:
 		
+<<<<<<< HEAD
 
 	int getPid();
+=======
+	void updateBeginTime();
+	
+>>>>>>> bc7c20ed778f80fdbdc52b8d94392110253cb1a3
 
 		void changePriorityCarefully();
 		int priorityValue,CPUUsage;

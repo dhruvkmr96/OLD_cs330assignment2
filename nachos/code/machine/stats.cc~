@@ -120,7 +120,11 @@ Statistics::Print()
 
 
 void Statistics::updateBurst(int timek){
+<<<<<<< HEAD
 	if(timek==0) return;
+=======
+	if(time==0.0) return;
+>>>>>>> bc7c20ed778f80fdbdc52b8d94392110253cb1a3
 
 	bool eq=timek!=0 && timek<=2*TimerQuantum;
 	ASSERT(eq);

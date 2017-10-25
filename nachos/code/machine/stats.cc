@@ -13,7 +13,11 @@
 #include "stats.h"
 using namespace std;
 
+<<<<<<< HEAD
 long long TimerQuantum=100L;
+=======
+long long TimerQuantum=100;
+>>>>>>> bc7c20ed778f80fdbdc52b8d94392110253cb1a3
 
 //----------------------------------------------------------------------
 // Statistics::Statistics
